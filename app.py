@@ -4,7 +4,7 @@ import os
 from streamlit_chat import message
 from model import ChatPDF
 
-st.set_page_config(page_title="ChatPDF")
+st.set_page_config(page_title="PDF-QA-Assistant")
 
 
 def display_messages():
