@@ -1,1 +1,1 @@
-# rag-app
+# PDF-QA-Assistant
