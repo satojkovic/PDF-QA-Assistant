@@ -1,67 +1,47 @@
-import streamlit as st
+import gradio as gr
 import tempfile
 import os
-from streamlit_chat import message
 from model import ChatPDF
 
-st.set_page_config(page_title="PDF-QA-Assistant")
+assistant = ChatPDF()
 
+# 状態管理のための初期化
+messages = []
 
-def display_messages():
-    st.subheader("Chat")
-    for i, (msg, is_user) in enumerate(st.session_state["messages"]):
-        message(msg, is_user=is_user, key=str(i))
-    st.session_state["thinking_spinner"] = st.empty()
+def upload_and_process(files):
+    global assistant, messages
+    assistant.clear()
+    messages.clear()
 
+    for file_path in files:  # file_pathはファイルのパスを示す
+        with open(file_path, "rb") as file:
+            with tempfile.NamedTemporaryFile(delete=False) as tf:
+                tf.write(file.read())
+                temp_file_path = tf.name
 
-def process_input():
-    if (
-        st.session_state["user_input"]
-        and len(st.session_state["user_input"].strip()) > 0
-    ):
-        user_text = st.session_state["user_input"].strip()
-        with st.session_state["thinking_spinner"], st.spinner("Thinking"):
-            agent_text = st.session_state["assistant"].ask(user_text)
-        st.session_state["messages"].append((user_text, True))
-        st.session_state["messages"].append((agent_text, False))
+        assistant.ingest(temp_file_path)
+        os.remove(temp_file_path)
 
+    return f"{len(files)} file(s) processed successfully. You can now start chatting."
 
-def read_and_save_file():
-    st.session_state["assistant"].clear()
-    st.session_state["messages"] = []
-    st.session_state["user_input"] = ""
+def chat(user_input):
+    global messages, assistant
+    if user_input.strip():
+        agent_response = assistant.ask(user_input)
+        messages.append(("User", user_input))
+        messages.append(("Assistant", agent_response))
+        return [(msg_type, msg_text) for msg_type, msg_text in messages]
 
-    for file in st.session_state["file_uploader"]:
-        with tempfile.NamedTemporaryFile(delete=False) as tf:
-            tf.write(file.getbuffer())
-            file_path = tf.name
+# Gradioのインターフェイス
+with gr.Blocks() as demo:
+    gr.Markdown("# ChatPDF")
 
-        with st.session_state["ingestion_spinner"], st.spinner(
-            f"Ingesting {file.name}"
-        ):
-            st.session_state["assistant"].ingest(file_path)
-        os.remove(file_path)
+    file_input = gr.File(label="Upload a document", file_count="multiple", type="filepath")
+    upload_output = gr.Textbox(label="Upload Status")
+    chat_input = gr.Textbox(label="Message", placeholder="Type your message here...")
+    chat_output = gr.Chatbot()
 
+    file_input.upload(upload_and_process, file_input, upload_output)
+    chat_input.submit(chat, chat_input, chat_output)
 
-def page():
-    if len(st.session_state) == 0:
-        st.session_state["messages"] = []
-        st.session_state["assistant"] = ChatPDF()
-
-    st.header("ChatPDF")
-    st.subheader("Upload a document")
-    st.file_uploader(
-        "Upload a document",
-        type=["pdf"],
-        key="file_uploader",
-        on_change=read_and_save_file,
-        label_visibility="collapsed",
-        accept_multiple_files=True,
-    )
-    st.session_state["ingestion_spinner"] = st.empty()
-    display_messages()
-    st.text_input("Message", key="user_input", on_change=process_input)
-
-
-if __name__ == "__main__":
-    page()
+demo.launch()

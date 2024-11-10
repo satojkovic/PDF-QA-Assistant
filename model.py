@@ -14,10 +14,10 @@ class ChatPDF:
     retriever = None
     chain = None
 
-    def __init__(self, model="mistral"):
+    def __init__(self, model="llama3.1"):
         self.model = ChatOllama(model=model)
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1024, chunk_overlap=100
+            chunk_size=512, chunk_overlap=128
         )
         self.prompt = PromptTemplate.from_template(
             """
