@@ -1,0 +1,6 @@
+gradio
+langchain_community
+pypdf
+fastembed
+chromadb
+onnxruntime==1.19.2
