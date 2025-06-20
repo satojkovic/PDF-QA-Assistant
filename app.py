@@ -44,4 +44,4 @@ with gr.Blocks() as demo:
     file_input.upload(upload_and_process, file_input, upload_output)
     chat_input.submit(chat, chat_input, chat_output)
 
-demo.launch()
+demo.launch(server_name="0.0.0.0", server_port=7860)

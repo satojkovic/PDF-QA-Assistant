@@ -4,7 +4,7 @@ from langchain.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.vectorstores.utils import filter_complex_metadata
 from langchain_community.vectorstores.chroma import Chroma
-from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 
@@ -17,7 +17,7 @@ class ChatPDF:
     def __init__(self, model="llama3.1"):
         self.model = ChatOllama(model=model)
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512, chunk_overlap=128
+            chunk_size=1000, chunk_overlap=200
         )
         self.prompt = PromptTemplate.from_template(
             """
@@ -32,17 +32,21 @@ class ChatPDF:
 
     def ingest(self, pdf_file_path: str):
         docs = PyPDFLoader(file_path=pdf_file_path).load()
+        print(f"Loaded {len(docs)} pages from PDF")
+        for i, doc in enumerate(docs[:2]):  # Print first 2 pages for debugging
+            print(f"Page {i+1} content preview: {doc.page_content[:200]}...")
+        
         chunks = self.text_splitter.split_documents(docs)
         chunks = filter_complex_metadata(chunks)
+        print(f"Created {len(chunks)} chunks after splitting")
 
         vector_store = Chroma.from_documents(
-            documents=chunks, embedding=FastEmbedEmbeddings()
+            documents=chunks, embedding=OllamaEmbeddings(model="llama3.1")
         )
         self.retriever = vector_store.as_retriever(
-            search_type="similarity_score_threshold",
+            search_type="similarity",
             search_kwargs={
-                "k": 3,
-                "score_threshold": 0.5,
+                "k": 5,
             },
         )
 
